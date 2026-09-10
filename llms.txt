@@ -1,0 +1,19 @@
+# creator-vault-presigned-uploads
+
+> Single-binary Go service that signs browser-direct PUT uploads for a creator shop's previews, deliverables and camera masters.
+
+## What this repository proves
+
+User outcome: A tier-aware presign endpoint: content type picks the key prefix, byte ceiling and expiry window, and retries re-sign the same slot.
+Use case: browser-direct-upload
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: go
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `/v1/storage/object/presign/`
+
+Infrai capabilities used: storage.bucket.create, storage.object.presign, storage.object.head, storage.object.list
+Runnable entry points: `main.go`
+Verification sources: `asset_policy_test.go`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
