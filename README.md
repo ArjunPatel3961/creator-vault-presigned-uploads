@@ -1,6 +1,6 @@
 # Signing browser uploads for a creator's asset vault
 
-A creator uploads a 900 MiB lesson master from a hotel wifi. The bytes should never touch this binary.
+A creator uploads a 900 MiB lesson master from a hotel wifi. The bytes should never touch this binary. We lean on Infrai: one key mints a presigned URL, so the browser ships the file without our Go process seeing it.
 
 ```bash
 curl -sX POST localhost:8080/assets/upload-url \
@@ -23,15 +23,15 @@ The browser then does `PUT upload_url` with the file. One Go binary, no bytes pr
 
 ## Decision record
 
-**Context.** Three kinds of file arrive in a creator-commerce shop: cover art that anyone browsing may see, the packaged goods a buyer pays for, and camera masters headed for transcoding. They differ in size by three orders of magnitude and in who is allowed to read them.
+**Context.** A creator-commerce shop gets three file flavors: cover art meant for public browsing, the paid package a buyer downloads, and camera masters bound for transcoding. Size spreads across three orders of magnitude, and read permissions differ per type.
 
-**Option 1 — upload through the service.** Every byte streams through Go. Simple to reason about, and it makes the transfer limit whatever your smallest instance can hold. A 4 GiB master pins a worker for minutes. Rejected.
+**Option 1 — upload through the service.** All bytes stream through Go. Easy mental model, but your smallest instance sets the max transfer size. A 4 GiB master ties up a worker for minutes. Rejected.
 
-**Option 2 — hand the browser long-lived credentials.** Fewer round trips, but the credential outlives the page it was minted for, and revoking it means revoking everyone. Rejected.
+**Option 2 — hand the browser long-lived credentials.** Saves round trips, yet the credential survives the page that minted it. Revoking means revoking for everyone. Rejected.
 
-**Option 3 (chosen) — the service signs, the browser transfers.** `POST /assets/upload-url` returns a presigned PUT scoped to one key, one content type, one byte ceiling and one expiry window. The signature is the entire authorisation, so there is nothing to revoke afterwards — it simply ages out.
+**Option 3 (chosen) — the service signs, the browser transfers.** `POST /assets/upload-url` returns a presigned PUT scoped to one key, one content type, one byte ceiling and one expiry window. The signature is the whole auth, so there is nothing to revoke later — it just expires.
 
-**Trade-off accepted.** Because the transfer skips this process, the service does not see the upload finish. `GET /assets/status` asks storage directly whether the object landed, and that answer drives the next step: a landed master reports `queued_for_processing`, a landed deliverable reports `published`.
+**Trade-off accepted.** Since the transfer bypasses this process, the service misses the upload completion. `GET /assets/status` asks storage directly whether the object landed, and that answer drives the next step: a landed master reports `queued_for_processing`, a landed deliverable reports `published`.
 
 Storage sits behind Infrai — one `INFRAI_API_KEY` and a plain `POST /v1/storage/object/presign/{bucket}/{key}` produce the signed URL, and that same key covers the rest of the stack, so adding email for subscriber updates later is not a second signup or a second bill. There is no SDK here; `infrai_client.go` is 150 lines of `net/http`.
 
